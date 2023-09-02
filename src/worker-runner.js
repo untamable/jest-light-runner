@@ -39,13 +39,6 @@ const initialSetup = once(async projectConfig => {
     );
     snapshot.addSerializer(serializer);
   }
-
-  for (const setupFile of projectConfig.setupFilesAfterEnv) {
-    const { default: setup } = await import(pathToFileURL(setupFile));
-    if (typeof setup === "function") await setup();
-  }
-
-  return snapshot.getSerializers().slice();
 });
 
 export default async function run({
@@ -54,7 +47,7 @@ export default async function run({
   testNamePattern,
   port,
 }) {
-  const projectSnapshotSerializers = await initialSetup(test.context.config);
+  await initialSetup(test.context.config);
 
   port.postMessage("start");
 
@@ -66,6 +59,12 @@ export default async function run({
   /** @type {Array<InternalTestResult>} */
   const results = [];
 
+  circus.resetState();
+  for (const setupFile of test.context.config.setupFilesAfterEnv) {
+    const { default: setup } = await import(pathToFileURL(setupFile));
+    if (typeof setup === "function") await setup();
+  }
+  const projectSnapshotSerializers = snapshot.getSerializers().slice();
   const { tests, hasFocusedTests } = await loadTests(test.path);
 
   const snapshotResolver = await snapshot.buildSnapshotResolver(
@@ -98,7 +97,6 @@ export default async function run({
 }
 
 async function loadTests(testFile) {
-  circus.resetState();
   await import(pathToFileURL(testFile) + "?" + Date.now());
   const { rootDescribeBlock, hasFocusedTests } = circus.getState();
   return { tests: rootDescribeBlock, hasFocusedTests };
