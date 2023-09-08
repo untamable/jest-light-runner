@@ -332,7 +332,7 @@ function failureToString(test) {
     "\n" +
     test.errors
       .map(error =>
-        error.stack
+        (error.stack || 'No stack trace')
           .replace(/\n.*jest-light-runner.*/g, "")
           .replace(/^/gm, "    ")
       )
